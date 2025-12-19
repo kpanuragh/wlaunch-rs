@@ -1,0 +1,72 @@
+[package]
+name = "wlaunch"
+version = "0.1.0"
+edition = "2021"
+description = "A Raycast-like application launcher for Linux"
+authors = ["wlaunch-rs"]
+
+[dependencies]
+# GUI
+iced = { version = "0.13", features = ["tokio", "image", "svg"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# System directories
+dirs = "5"
+
+# Process management
+sysinfo = "0.32"
+
+# Clipboard
+arboard = "3"
+
+# HTTP client (for AI, web search)
+reqwest = { version = "0.12", features = ["json"] }
+
+# Time handling
+chrono = "0.4"
+
+# Regex for parsing
+regex = "1"
+
+# Command execution
+which = "7"
+
+# Environment variables
+dotenvy = "0.15"
+
+# Fuzzy matching
+fuzzy-matcher = "0.3"
+
+# Notifications
+notify-rust = "4"
+
+# UUID for unique IDs
+uuid = { version = "1", features = ["v4"] }
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Walking directories
+walkdir = "2"
+
+# Mime type detection
+mime_guess = "2"
+
+# Image handling
+image = "0.25"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
