@@ -1,0 +1,13 @@
+[Unit]
+Description=WLaunch Clipboard Manager Daemon
+Documentation=https://github.com/kpanuragh/wlaunch-rs
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/wlaunch --daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

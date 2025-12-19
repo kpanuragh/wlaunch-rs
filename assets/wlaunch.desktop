@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=WLaunch
+Comment=Raycast-like application launcher for Linux
+Exec=wlaunch
+Icon=wlaunch
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=launcher;search;apps;
+StartupNotify=false

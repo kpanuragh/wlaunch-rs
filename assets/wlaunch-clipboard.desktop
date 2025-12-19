@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=WLaunch Clipboard Daemon
+Comment=Clipboard history manager for WLaunch
+Exec=wlaunch --daemon
+Icon=wlaunch
+Terminal=false
+Type=Application
+Categories=Utility;
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+StartupNotify=false

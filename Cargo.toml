@@ -80,11 +80,14 @@ strip = true
 maintainer = "kpanuragh <kpanuragh@gmail.com>"
 copyright = "2024, kpanuragh"
 license-file = ["LICENSE", "0"]
-extended-description = "A Raycast-like application launcher for Linux built with Rust and Iced GUI framework."
+extended-description = "A Raycast-like application launcher for Linux built with Rust and Iced GUI framework. Includes clipboard history manager daemon."
 section = "utility"
 priority = "optional"
 assets = [
     ["target/release/wlaunch", "usr/bin/", "755"],
+    ["assets/wlaunch.desktop", "usr/share/applications/", "644"],
+    ["assets/wlaunch-clipboard.desktop", "etc/xdg/autostart/", "644"],
+    ["assets/wlaunch-clipboard.service", "usr/lib/systemd/user/", "644"],
 ]
 depends = "$auto"
 
@@ -92,4 +95,7 @@ depends = "$auto"
 [package.metadata.generate-rpm]
 assets = [
     { source = "target/release/wlaunch", dest = "/usr/bin/wlaunch", mode = "755" },
+    { source = "assets/wlaunch.desktop", dest = "/usr/share/applications/wlaunch.desktop", mode = "644" },
+    { source = "assets/wlaunch-clipboard.desktop", dest = "/etc/xdg/autostart/wlaunch-clipboard.desktop", mode = "644" },
+    { source = "assets/wlaunch-clipboard.service", dest = "/usr/lib/systemd/user/wlaunch-clipboard.service", mode = "644" },
 ]
