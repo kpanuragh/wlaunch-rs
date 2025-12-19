@@ -1,17 +1,28 @@
+//! Window manager integration for listing and focusing windows.
+//!
+//! Supports multiple window managers:
+//! - i3/Sway (via `i3-msg`)
+//! - Hyprland (via `hyprctl`)
+//! - X11 WMs like GNOME, KDE, XFCE (via `wmctrl`)
+
 use crate::core::{Item, ItemType};
 use serde::Deserialize;
 use std::process::Command;
 
-// Detected window manager type
+/// Supported window manager types.
 #[derive(Debug, Clone, PartialEq)]
 enum WMType {
+    /// i3 or Sway window manager
     I3Sway,
+    /// Hyprland compositor
     Hyprland,
+    /// Generic X11 window managers via wmctrl
     X11Wmctrl,
+    /// No supported window manager detected
     Unknown,
 }
 
-// i3/Sway structures
+/// i3/Sway tree node structure for JSON deserialization.
 #[derive(Debug, Deserialize)]
 struct I3Node {
     id: i64,
@@ -30,6 +41,7 @@ struct I3Node {
     num: Option<i32>,
 }
 
+/// i3/Sway window properties.
 #[derive(Debug, Deserialize)]
 struct I3WindowProperties {
     class: Option<String>,
@@ -38,7 +50,7 @@ struct I3WindowProperties {
     title: Option<String>,
 }
 
-// Hyprland structures
+/// Hyprland client (window) structure for JSON deserialization.
 #[derive(Debug, Deserialize)]
 struct HyprlandClient {
     address: String,
@@ -47,16 +59,27 @@ struct HyprlandClient {
     workspace: HyprlandWorkspace,
 }
 
+/// Hyprland workspace information.
 #[derive(Debug, Deserialize)]
 struct HyprlandWorkspace {
     name: String,
 }
 
+/// Manager for window listing and manipulation across different window managers.
+///
+/// Automatically detects the running window manager at initialization and uses
+/// the appropriate backend for window operations.
 pub struct WindowsManager {
     wm_type: WMType,
 }
 
 impl WindowsManager {
+    /// Creates a new WindowsManager, auto-detecting the current window manager.
+    ///
+    /// Detection order:
+    /// 1. Hyprland (checks `HYPRLAND_INSTANCE_SIGNATURE` env var and `hyprctl`)
+    /// 2. i3/Sway (checks `i3-msg -t get_version`)
+    /// 3. wmctrl (fallback for X11 window managers)
     pub fn new() -> Self {
         let wm_type = Self::detect_wm();
         log::debug!("Detected window manager: {:?}", wm_type);
@@ -90,6 +113,13 @@ impl WindowsManager {
         WMType::Unknown
     }
 
+    /// Returns a list of open windows matching the query.
+    ///
+    /// # Arguments
+    /// * `query` - Filter string to match against window titles and classes
+    ///
+    /// # Returns
+    /// Vector of `Item` representing each matching window
     pub fn get_items(&self, query: &str) -> Vec<Item> {
         let query = query.to_lowercase();
         let mut items = match self.wm_type {
@@ -282,7 +312,15 @@ impl WindowsManager {
         items
     }
 
-    // ==================== Focus Window ====================
+    /// Focuses a window by its ID.
+    ///
+    /// # Arguments
+    /// * `window_id` - The window ID to focus (format depends on WM)
+    ///
+    /// Uses the appropriate command for the detected window manager:
+    /// - i3/Sway: `i3-msg [con_id=<id>] focus`
+    /// - Hyprland: `hyprctl dispatch focuswindow address:<addr>`
+    /// - wmctrl: `wmctrl -i -a <id>`
     pub fn focus_window(&self, window_id: i64) {
         let result = match self.wm_type {
             WMType::I3Sway => {
@@ -317,6 +355,16 @@ impl WindowsManager {
         }
     }
 
+    /// Closes a window by its ID.
+    ///
+    /// # Arguments
+    /// * `window_id` - The window ID to close (format depends on WM)
+    ///
+    /// Uses the appropriate command for the detected window manager:
+    /// - i3/Sway: `i3-msg [con_id=<id>] kill`
+    /// - Hyprland: `hyprctl dispatch closewindow address:<addr>`
+    /// - wmctrl: `wmctrl -i -c <id>`
+    #[allow(dead_code)]
     pub fn close_window(&self, window_id: i64) {
         let result = match self.wm_type {
             WMType::I3Sway => {
