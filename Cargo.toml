@@ -3,7 +3,11 @@ name = "wlaunch"
 version = "0.1.0"
 edition = "2021"
 description = "A Raycast-like application launcher for Linux"
-authors = ["wlaunch-rs"]
+authors = ["kpanuragh <kpanuragh@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/kpanuragh/wlaunch-rs"
+homepage = "https://github.com/kpanuragh/wlaunch-rs"
+readme = "README.md"
 
 [dependencies]
 # GUI
@@ -70,3 +74,22 @@ image = "0.25"
 opt-level = 3
 lto = true
 strip = true
+
+# Debian package configuration
+[package.metadata.deb]
+maintainer = "kpanuragh <kpanuragh@gmail.com>"
+copyright = "2024, kpanuragh"
+license-file = ["LICENSE", "0"]
+extended-description = "A Raycast-like application launcher for Linux built with Rust and Iced GUI framework."
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/wlaunch", "usr/bin/", "755"],
+]
+depends = "$auto"
+
+# RPM package configuration
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/wlaunch", dest = "/usr/bin/wlaunch", mode = "755" },
+]

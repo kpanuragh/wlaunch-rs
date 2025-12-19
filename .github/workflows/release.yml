@@ -1,18 +1,18 @@
-name: Build
+name: Release
 
 on:
   push:
-    branches: [master]
-  pull_request:
-    branches: [master]
-  workflow_dispatch:
+    tags:
+      - 'v*'
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-linux:
+  build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -48,16 +48,12 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cargo-release-
 
       - name: Build release
         run: cargo build --release
-
-      - name: Run clippy
-        run: cargo clippy -- -D warnings
-        continue-on-error: true
 
       - name: Install cargo-deb
         run: cargo install cargo-deb
@@ -71,23 +67,25 @@ jobs:
       - name: Build .rpm package
         run: cargo generate-rpm
 
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: wlaunch-linux-x86_64
-          path: target/release/wlaunch
-          if-no-files-found: error
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Upload .deb artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: wlaunch-deb
-          path: target/debian/*.deb
-          if-no-files-found: error
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cp target/release/wlaunch release/wlaunch-linux-x86_64
+          cp target/debian/*.deb release/
+          cp target/generate-rpm/*.rpm release/
+          cd release && tar -czvf wlaunch-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz wlaunch-linux-x86_64
 
-      - name: Upload .rpm artifact
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: wlaunch-rpm
-          path: target/generate-rpm/*.rpm
-          if-no-files-found: error
+          files: |
+            release/wlaunch-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz
+            release/*.deb
+            release/*.rpm
+          generate_release_notes: true
+          draft: false
+          prerelease: false
