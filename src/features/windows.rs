@@ -66,8 +66,10 @@ impl WindowsManager {
     fn detect_wm() -> WMType {
         // Check for Hyprland first (via HYPRLAND_INSTANCE_SIGNATURE env var)
         if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
-            if Command::new("hyprctl").arg("version").output().is_ok() {
-                return WMType::Hyprland;
+            if let Ok(output) = Command::new("hyprctl").arg("version").output() {
+                if output.status.success() {
+                    return WMType::Hyprland;
+                }
             }
         }
 
@@ -220,23 +222,23 @@ impl WindowsManager {
     fn get_wmctrl_windows(&self) -> Vec<Item> {
         let mut items = Vec::new();
 
-        // wmctrl -l -p output format:
-        // 0x04000003  0 1234   hostname Window Title
+        // wmctrl -l -x output format:
+        // 0x04000003  0 instance.class  hostname Window Title
         if let Ok(output) = Command::new("wmctrl").args(["-l", "-x"]).output() {
             if output.status.success() {
                 if let Ok(stdout) = String::from_utf8(output.stdout) {
                     for line in stdout.lines() {
                         let parts: Vec<&str> = line.splitn(5, ' ').filter(|s| !s.is_empty()).collect();
-                        if parts.len() >= 4 {
+                        if parts.len() >= 5 {
                             let window_id_hex = parts[0];
                             let desktop = parts[1];
                             let class = parts[2];
-                            // Remaining parts form the title
-                            let title_parts: Vec<&str> = line.splitn(5, ' ').filter(|s| !s.is_empty()).collect();
-                            let title = if title_parts.len() >= 5 {
-                                title_parts[4..].join(" ")
-                            } else {
+                            // parts[3] is hostname, parts[4..] is title
+                            let title = parts[4..].join(" ");
+                            let title = if title.is_empty() {
                                 class.to_string()
+                            } else {
+                                title
                             };
 
                             // Parse window ID from hex
@@ -282,46 +284,70 @@ impl WindowsManager {
 
     // ==================== Focus Window ====================
     pub fn focus_window(&self, window_id: i64) {
-        match self.wm_type {
+        let result = match self.wm_type {
             WMType::I3Sway => {
-                let _ = Command::new("i3-msg")
+                Command::new("i3-msg")
                     .arg(format!("[con_id={}] focus", window_id))
-                    .output();
+                    .output()
             }
             WMType::Hyprland => {
                 let address = format!("0x{:x}", window_id);
-                let _ = Command::new("hyprctl")
+                Command::new("hyprctl")
                     .args(["dispatch", "focuswindow", &format!("address:{}", address)])
-                    .output();
+                    .output()
             }
             WMType::X11Wmctrl => {
-                let _ = Command::new("wmctrl")
+                Command::new("wmctrl")
                     .args(["-i", "-a", &format!("0x{:08x}", window_id)])
-                    .output();
+                    .output()
             }
-            WMType::Unknown => {}
+            WMType::Unknown => return,
+        };
+
+        if let Err(e) = result {
+            log::debug!("Failed to focus window {}: {}", window_id, e);
+        } else if let Ok(output) = result {
+            if !output.status.success() {
+                log::debug!(
+                    "Focus window command failed for {}: {}",
+                    window_id,
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
         }
     }
 
     pub fn close_window(&self, window_id: i64) {
-        match self.wm_type {
+        let result = match self.wm_type {
             WMType::I3Sway => {
-                let _ = Command::new("i3-msg")
+                Command::new("i3-msg")
                     .arg(format!("[con_id={}] kill", window_id))
-                    .output();
+                    .output()
             }
             WMType::Hyprland => {
                 let address = format!("0x{:x}", window_id);
-                let _ = Command::new("hyprctl")
+                Command::new("hyprctl")
                     .args(["dispatch", "closewindow", &format!("address:{}", address)])
-                    .output();
+                    .output()
             }
             WMType::X11Wmctrl => {
-                let _ = Command::new("wmctrl")
+                Command::new("wmctrl")
                     .args(["-i", "-c", &format!("0x{:08x}", window_id)])
-                    .output();
+                    .output()
             }
-            WMType::Unknown => {}
+            WMType::Unknown => return,
+        };
+
+        if let Err(e) = result {
+            log::debug!("Failed to close window {}: {}", window_id, e);
+        } else if let Ok(output) = result {
+            if !output.status.success() {
+                log::debug!(
+                    "Close window command failed for {}: {}",
+                    window_id,
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
         }
     }
 }
